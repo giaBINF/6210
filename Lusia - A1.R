@@ -6,10 +6,57 @@
 ## package used ----
 library(tidyverse)
 library(sf)
-library(broom)
 library(dplyr)
 library(jtools)
 library(ggplot2)
+library(broom)
+#
+
+## theme setting ----
+theme_black <- function(base_size = 12, base_family = "") {
+  
+  theme_grey(base_size = base_size, base_family = base_family) %+replace%
+    
+    theme(
+      line= element_line(color="white"),
+      # Specify axis options
+      axis.line = element_blank(),  
+      axis.text.x = element_text(size = base_size*0.8, color = "white", lineheight = 0.9),  
+      axis.text.y = element_text(size = base_size*0.8, color = "white", lineheight = 0.9),  
+      axis.ticks = element_line(color = "white", size  =  0.2),  
+      axis.title.x = element_text(size = base_size, color = "white", margin = margin(0, 10, 0, 0)),  
+      axis.title.y = element_text(size = base_size, color = "white", angle = 90, margin = margin(0, 10, 0, 0)),  
+      axis.ticks.length = unit(0.3, "lines"),   
+      # Specify legend options
+      legend.background = element_rect(color = NA, fill = "black"),  
+      legend.key = element_rect(color = "white",  fill = "black"),  
+      legend.key.size = unit(1.2, "lines"),  
+      legend.key.height = NULL,  
+      legend.key.width = NULL,      
+      legend.text = element_text(size = base_size*0.8, color = "white"), 
+      legend.axis.line = element_line(color="white"),
+      legend.title = element_text(size = base_size*0.8, face = "bold", hjust = 0, color = "white"),  
+      legend.position = "right",  
+      legend.text.align = NULL,  
+      legend.title.align = NULL,  
+      legend.direction = "vertical",  
+      legend.box = NULL, 
+      # Specify panel options
+      panel.background = element_rect(fill = "black", color  =  NA),  
+      panel.border = element_rect(fill = NA, color = "white"),  
+      panel.grid.major = element_line(color = "grey35"),  
+      panel.grid.minor = element_line(color = "grey20"),  
+      panel.margin = unit(0.5, "lines"),   
+      # Specify facetting options
+      strip.background = element_rect(fill = "grey30", color = "grey10"),  
+      strip.text.x = element_text(size = base_size*0.8, color = "white"),  
+      strip.text.y = element_text(size = base_size*0.8, color = "white",angle = -90),  
+      # Specify plot options
+      plot.background = element_rect(color = "black", fill = "black"),  
+      plot.title = element_text(size = base_size*1.2, color = "white", margin=margin(b=10)),  
+      plot.margin = unit(rep(1, 4), "lines")
+    )
+}
 #
 
 ## Data Cleaning and Preparation ----
@@ -67,23 +114,19 @@ vespidae_range <- function(vespidae_clean) {
 bin_summary_1 <- vespidae_clean %>%
   group_by(bin_uri) %>%
   summarise(
-    # Response variable: Latitudinal Range
     latitudinal_range = max(lat) - min(lat),
-    # Predictor variable: Median Latitude
     median_latitude = median(lat),
     n_records = n()
   )
 
 bin_summary_2 <- vespidae_clean %>%
   group_by(bin_uri) %>%
-  # 1. First, remove groups with < 3 unique points
   filter(n_distinct(paste(lat, lon)) >= 3) %>%
   mutate(median_latitude = median(lat)) %>%
   nest(points = c(lat, lon)) %>%
   mutate(range_area_km2 = map_dbl(points, vespidae_range)) %>%
-  # 2. Remove any NAs (from other errors)
   filter(!is.na(range_area_km2)) %>%
-  # 3. NEW: Remove all co-linear "zero" areas
+  filter(!is.na(range_area_km2)) %>%
   filter(range_area_km2 > Min_area) %>%
   select(bin_uri, median_latitude, range_area_km2) %>%
   ungroup()
@@ -95,7 +138,14 @@ summary(rapoport_model_1)
 rapoport_model_2<- lm(log(range_area_km2) ~ median_latitude, data = bin_summary_2)
 summary(rapoport_model_2)
 
+#summ(rapoport_model_1)
+#summ(rapoport_model_2)
+
 ## Visualize the Result ----
+rapoport_plot_1 <- ggplot(bin_summary_1, aes(x = median_latitude, y = latitudinal_range)) +
+  geom_point(alpha = 0.6, color = "yellow") +
+  
+  ## Visualize the Result ----
 summ(rapoport_model_1)
 summ(rapoport_model_2)
 
@@ -108,7 +158,7 @@ rapoport_plot_1 <- ggplot(bin_summary_1, aes(x = median_latitude, y = latitudina
     x = "Median Latitude of BIN (°N)",
     y = "Latitudinal Range of BIN (max - min latitude)"
   ) +
-  theme_minimal()
+  theme_black()
 
 print(rapoport_plot_1)
 
@@ -121,6 +171,28 @@ rapoport_plot_2 <- ggplot(bin_summary_2, aes(x = median_latitude, y = log(range_
     x = "Median Latitude of BIN (°N)",
     y = "log(Minimum Convex hull of BIN) (km^2)"
   ) +
-  theme_minimal()
+  theme_black()
 
 print(rapoport_plot_2)
+
+#model1_lats <- bin_summary_1 %>%
+#select(median_latitude) %>%
+#mutate(model_source = "Model 1 (1D Range)") 
+
+#model2_lats <- bin_summary_2 %>%
+# select(median_latitude) %>%
+# mutate(model_source = "Model 2 (2D Area)") 
+
+#combined_lats <- bind_rows(model1_lats, model2_lats) # Combine them into one data frame
+
+#ggplot(combined_lats, aes(x = median_latitude, fill = model_source)) +
+# geom_density(alpha = 0.4) +  # alpha adds transparency
+#labs(
+# title = "Distribution of Median Latitudes Used in Each Model",
+#x = "Median Latitude of BIN (°N)",
+#y = "Density",
+#fill = "Model"
+#) +
+#theme_black()
+#theme_minimal()
+
