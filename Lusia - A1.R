@@ -60,7 +60,7 @@ theme_black <- function(base_size = 12, base_family = "") {
 #
 
 ## Data Cleaning and Preparation ----
-vespidae_raw <- read_tsv("C:/Users/95joo/OneDrive/Documents/BINF-6210/Data/result.tsv")
+vespidae_raw <- read_tsv("https://portal.boldsystems.org/api/documents/eAErSaywSkvMzcyptApLLS7ITElMtc7JzM0sSU0BAJPDCpg=/download?format=tsv")
 
 # minimun value set up
 min_bin <-10
